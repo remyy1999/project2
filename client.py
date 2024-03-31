@@ -45,11 +45,13 @@ class TCPClient:
         # Send SYN packet and expect SYN-ACK
         while True:
             pkt = Packet(seqNum=self.sequence_number, connId=self.connection_id, isSyn=True)
+            self.log_packet_sent(pkt)
             self.sock._send(pkt)
             response_pkt = self.sock._recv()
             if response_pkt and response_pkt.isSyn and response_pkt.isAck:
                 self.connection_id = response_pkt.connId
                 self.acknowledgment_number = response_pkt.seqNum + 1  # Next expected sequence number
+                self.log_packet_received(response_pkt)
                 break
 
     def send_file(self):
@@ -63,6 +65,7 @@ class TCPClient:
     def send_packet(self, data):
         # Send packet and update sequence number
         pkt = Packet(seqNum=self.sequence_number, ackNum=self.acknowledgment_number, connId=self.connection_id, isAck=True, payload=data)
+        self.log_packet_sent(pkt)
         self.sock._send(pkt)
         self.sequence_number += len(data)
 
@@ -75,12 +78,14 @@ class TCPClient:
     def terminate_connection(self):
         # Send FIN packet
         pkt = Packet(seqNum=self.sequence_number, ackNum=self.acknowledgment_number, connId=self.connection_id, isFin=True)
+        self.log_packet_sent(pkt)
         self.sock._send(pkt)
 
         # Expect ACK for FIN packet
         while True:
             response_pkt = self.sock._recv()
             if response_pkt and response_pkt.isAck:
+                self.log_packet_received(response_pkt)
                 break
 
         # Wait for incoming FIN packets
@@ -89,7 +94,33 @@ class TCPClient:
             response_pkt = self.sock._recv()
             if response_pkt and response_pkt.isFin:
                 pkt = Packet(seqNum=response_pkt.ackNum, ackNum=response_pkt.seqNum + 1, connId=self.connection_id, isAck=True)
+                self.log_packet_sent(pkt)
                 self.sock._send(pkt)
+                self.log_packet_received(response_pkt)
+
+    def log_packet_sent(self, pkt):
+        flags = []
+        if pkt.isAck:
+            flags.append("ACK")
+        if pkt.isSyn:
+            flags.append("SYN")
+        if pkt.isFin:
+            flags.append("FIN")
+        if pkt.dup:
+            flags.append("DUP")
+
+        print(f"SEND {pkt.seqNum} {pkt.ackNum} {pkt.connId} {self.CWND} {self.SS_THRESH} {' '.join(flags)}")
+
+    def log_packet_received(self, pkt):
+        flags = []
+        if pkt.isAck:
+            flags.append("ACK")
+        if pkt.isSyn:
+            flags.append("SYN")
+        if pkt.isFin:
+            flags.append("FIN")
+
+        print(f"RECV {pkt.seqNum} {pkt.ackNum} {pkt.connId} {self.CWND} {self.SS_THRESH} {' '.join(flags)}")
 
 def main():
     if len(sys.argv) != 4:

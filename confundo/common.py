@@ -1,8 +1,6 @@
-# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-# Copyright 2019 Alex Afanasyev
-#
+# confundo/common.py
 
-MTU=512
+MTU = 512
 MAX_SEQNO = 102401
 RETX_TIME = 0.5
 FIN_WAIT_TIME = 2.0
